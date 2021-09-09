@@ -25,12 +25,17 @@ pub fn create_collider_renders_system(
             .get(entity)
             .ok()
             .or_else(|| collider_shapes.get(**parent?).ok());
+        
 
         if let Some(co_shape) = co_shape {
             if let Some((mesh, scale)) = generate_collider_mesh(co_shape) {
                 let ground_pbr = PbrBundle {
                     mesh: meshes.add(mesh),
-                    material: materials.add(co_render.color.into()),
+                    material: materials.add( StandardMaterial {
+                        base_color:  co_render.color,
+                        unlit: true,
+                        ..Default::default()
+                    } ),
                     transform: Transform::from_scale(scale * configuration.scale),
                     ..Default::default()
                 };
@@ -66,18 +71,22 @@ pub fn update_collider_render_mesh(
 }
 
 fn generate_collider_mesh(co_shape: &ColliderShape) -> Option<(Mesh, Vec3)> {
+
     let mesh = match co_shape.shape_type() {
         #[cfg(feature = "dim3")]
         ShapeType::Cuboid => Mesh::from(shape::Cube { size: 2.0 }),
         #[cfg(feature = "dim2")]
-        ShapeType::Cuboid => Mesh::from(shape::Quad {
+        ShapeType::Cuboid => {
+            Mesh::from(shape::Quad {
             size: Vec2::new(2.0, 2.0),
             flip: false,
-        }),
-        ShapeType::Ball => Mesh::from(shape::Icosphere {
-            subdivisions: 2,
-            radius: 1.0,
-        }),
+        })},
+        ShapeType::Ball => {
+            Mesh::from(shape::Icosphere {
+                subdivisions: 2,
+                radius: 1.0,
+            })
+        } ,
         #[cfg(feature = "dim2")]
         ShapeType::TriMesh => {
             let mut mesh = Mesh::new(bevy::render::pipeline::PrimitiveTopology::TriangleList);
@@ -160,6 +169,26 @@ fn generate_collider_mesh(co_shape: &ColliderShape) -> Option<(Mesh, Vec3)> {
             )));
             mesh
         }
+        #[cfg(feature = "dim2")]
+        ShapeType::Polyline => {
+            println!("here");
+            let mut positions = Vec::new();
+            let mut normals = Vec::new();
+            let mut uvs = Vec::new();
+
+            let polyline = co_shape.as_polyline().unwrap();
+            for v in polyline.vertices() {
+                positions.push([v[0], v[1], 0.0]);
+                normals.push([0.0, 1.0, 0.0]);
+                uvs.push([1.0, 1.0]);
+            }
+            let mut mesh = Mesh::new(bevy::render::pipeline::PrimitiveTopology::LineStrip);
+            mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, positions );
+            mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+            mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+
+            mesh
+        }
         _ => return None,
     };
 
@@ -179,6 +208,7 @@ fn generate_collider_mesh(co_shape: &ColliderShape) -> Option<(Mesh, Vec3)> {
             Vec3::new(b.radius, b.radius, b.radius)
         }
         ShapeType::TriMesh => Vec3::ONE,
+        ShapeType::Polyline => Vec3::ONE,
         _ => unimplemented!(),
     };
 
