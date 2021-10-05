@@ -33,6 +33,3 @@ bevy = { version = "0.5", default-features = false }
 nalgebra = { version = "0.29", features = [ "convert-glam013" ] }
 # Don't enable the default features because we don't need the ColliderSet/RigidBodySet
 rapier3d = { version = "0.11", default-features = false, features = [ "dim3", "f32" ] }
-
-[dev-dependencies]
-bevy = { version = "0.5", default-features = false }
